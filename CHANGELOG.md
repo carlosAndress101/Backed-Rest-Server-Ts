@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: [SemVer](https://semver.org/).
 Client-visible contract changes are always listed under **Breaking** and mirrored in [API_PROGRESS.md](API_PROGRESS.md).
 
+## [3.2.3] - 2026-10-23
+
+No client-visible change.
+
+#### Security
+- Rebuilt the release image on Node.js **24.22.1** (`node:24-alpine`), which fixes the [October 2026 Node.js security release](https://nodejs.org/es/blog/vulnerability/october-2026-security-releases) CVEs (HIGH: Brotli out-of-bounds write, TLS hostname-verification bypasses, `dns.resolve` NUL truncation). Images 3.2.2 and earlier run an affected Node 24 build.
+
 ## [3.2.2] - 2026-10-07
 
 No client-visible change.
