@@ -43,6 +43,7 @@ export const fileParser: RequestHandler = (req, res, next) => {
   if (res.closed) return;
 
   const tempFileDir = path.join(os.tmpdir(), `upload-${process.pid}-${randomUUID()}`);
+  res.locals.uploadDir = tempFileDir;
 
   // Once the response is over no handler reads the files. The parser stops first, so no file part can start
   // later and recreate the folder (express-fileupload creates it with each file). The folder is then removed
@@ -96,11 +97,19 @@ const readHead = async (file: string): Promise<Buffer> => {
   }
 };
 
+/** The parser names its temp files itself; reading one outside this request's folder would be a broken invariant. */
+const inUploadDir = (uploadDir: unknown, file: string): string => {
+  const resolved = path.resolve(file);
+  if (typeof uploadDir !== 'string' || !resolved.startsWith(path.resolve(uploadDir) + path.sep))
+    throw new Error('Upload temp file is outside its request folder');
+  return resolved;
+};
+
 /** After fileParser: exactly one file, in the "file" field, that is a PNG, JPEG or GIF by its magic bytes. */
-export const requireImage: RequestHandler = async (req, _res, next) => {
+export const requireImage: RequestHandler = async (req, res, next) => {
   const file = req.files?.file;
   if (!file || Array.isArray(file)) throw new BadRequestError('No file was uploaded in the "file" field');
-  if (!isSupportedImage(await readHead(file.tempFilePath)))
+  if (!isSupportedImage(await readHead(inUploadDir(res.locals.uploadDir, file.tempFilePath))))
     throw new BadRequestError('The file must be a PNG, JPEG or GIF image');
   next();
 };
