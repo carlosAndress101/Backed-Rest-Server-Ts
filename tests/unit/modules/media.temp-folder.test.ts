@@ -27,16 +27,22 @@ const filePart = (content: Buffer, field = 'file') => Buffer.concat([partHead(fi
 const later = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // What the route does after the parser, by outcome.
-const outcomes: Record<string, RequestHandler> = {
-  stored: (_req, res) => void res.status(200).json({ data: 'stored' }),
-  missing: () => {
-    throw new NotFoundError('User not found');
-  },
-  failing: () => {
-    throw new Error('cloudinary is down');
-  },
+const outcomes = new Map<string, RequestHandler>(
+  Object.entries({
+    stored: (_req, res) => void res.status(200).json({ data: 'stored' }),
+    missing: () => {
+      throw new NotFoundError('User not found');
+    },
+    failing: () => {
+      throw new Error('cloudinary is down');
+    },
+  } satisfies Record<string, RequestHandler>),
+);
+const outcome: RequestHandler = (req, res, next) => {
+  const handler = outcomes.get(String(req.params.outcome));
+  if (!handler) throw new Error(`unknown outcome ${String(req.params.outcome)}`);
+  return handler(req, res, next);
 };
-const outcome: RequestHandler = (req, res, next) => outcomes[String(req.params.outcome)]!(req, res, next);
 const withLog: RequestHandler = (req, _res, next) => {
   Object.assign(req, { log: { warn: vi.fn() } });
   next();

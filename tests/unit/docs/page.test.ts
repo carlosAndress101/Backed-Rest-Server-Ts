@@ -34,7 +34,7 @@ describe('UI_BUNDLE', () => {
 
 describe('DOCS_PAGE_HTML', () => {
   test('has exactly one script tag: the pinned bundle, with its integrity and crossorigin', () => {
-    const tags = [...DOCS_PAGE_HTML.matchAll(/<script\b[^>]*>/g)].map(([tag]) => tag);
+    const tags = [...DOCS_PAGE_HTML.matchAll(/<script\b[^>]*>/gi)].map(([tag]) => tag);
 
     expect(tags).toEqual([
       `<script src="${UI_BUNDLE_URL}" integrity="${UI_BUNDLE.integrity}" crossorigin="anonymous">`,
@@ -42,7 +42,7 @@ describe('DOCS_PAGE_HTML', () => {
   });
 
   test('has no inline script body and no inline style', () => {
-    const bodies = [...DOCS_PAGE_HTML.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(
+    const bodies = [...DOCS_PAGE_HTML.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map(
       ([, body]) => body,
     );
 
