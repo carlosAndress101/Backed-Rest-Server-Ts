@@ -403,4 +403,24 @@ describe('media module (§6 #20–#22)', () => {
       expect(res.body).toEqual(invalidParam('collection'));
     });
   });
+
+  describe('per-account upload rate limit', () => {
+    const LIMIT = 30;
+    const RATE_LIMITED = {
+      error: { code: 'RATE_LIMITED', message: 'Too many requests, please try again later' },
+    };
+
+    test('the 31st replacement in the window is a 429 for that account only; other accounts keep their budget', async () => {
+      const product = await createProduct();
+      const url = `/api/uploads/product/${product.id}`;
+      // USER_ROLE has no product media rights: each attempt is a cheap 403, and still spends the budget.
+      for (let i = 0; i < LIMIT; i++) expect((await put(url, ownerToken)).status).toBe(403);
+
+      const limited = await put(url, ownerToken);
+      expect(limited.status).toBe(429);
+      expect(limited.body).toEqual(RATE_LIMITED);
+
+      expect((await put(url, await tokenFor(await createUser()))).status).toBe(403);
+    });
+  });
 });
