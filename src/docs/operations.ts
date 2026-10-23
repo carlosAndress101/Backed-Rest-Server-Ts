@@ -334,7 +334,7 @@ export const API_OPERATIONS: readonly ApiOperation[] = [
     tag: 'Media',
     summary: 'Replace a user’s or a product’s image',
     description:
-      'A user image: ADMIN_ROLE or the account itself. A product image: ADMIN_ROLE or VENTAS_ROLE (a product’s creator has no media rights). The previous image is deleted.',
+      'A user image: ADMIN_ROLE or the account itself. A product image: ADMIN_ROLE or VENTAS_ROLE (a product’s creator has no media rights). The previous image is deleted. Limited per account (429).',
     security: 'bearer',
     params: mediaParams,
     body: { schema: imageUpload, mediaType: 'multipart/form-data' },
@@ -350,6 +350,7 @@ export const API_OPERATIONS: readonly ApiOperation[] = [
       'NOT_FOUND',
       'PAYLOAD_TOO_LARGE',
       'VALIDATION_FAILED',
+      'RATE_LIMITED',
     ],
   },
   {

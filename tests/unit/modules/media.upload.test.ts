@@ -10,7 +10,12 @@ import type { Request, Response } from 'express';
 import { describe, expect, test, vi } from 'vitest';
 
 import { PayloadTooLargeError } from '../../../src/core/errors';
-import { fileParser, isSupportedImage, MAX_FILE_BYTES } from '../../../src/modules/media/media.upload';
+import {
+  fileParser,
+  isSupportedImage,
+  MAX_FILE_BYTES,
+  requireImage,
+} from '../../../src/modules/media/media.upload';
 import { listTempFiles, newTempFiles, waitForNoTempLeak } from '../../helpers/uploads';
 
 describe('isSupportedImage', () => {
@@ -56,7 +61,7 @@ describe('fileParser', () => {
       headers: { 'content-type': 'multipart/form-data; boundary=b', 'content-length': String(body.length) },
       log: { warn: vi.fn() },
     });
-    const res = new EventEmitter();
+    const res = Object.assign(new EventEmitter(), { locals: {} });
     const next = vi.fn();
 
     fileParser(req as unknown as Request, res as unknown as Response, next);
@@ -86,7 +91,7 @@ describe('fileParser', () => {
       headers: { 'content-type': 'multipart/form-data; boundary=b', 'content-length': String(body.length) },
       log: { warn: vi.fn() },
     });
-    const res = Object.assign(new EventEmitter(), { headersSent: false });
+    const res = Object.assign(new EventEmitter(), { headersSent: false, locals: {} });
     // As the error handler does: it answers before express-fileupload aborts, which then only drains the body.
     const next = vi.fn(() => {
       res.headersSent = true;
@@ -126,7 +131,10 @@ describe('fileParser', () => {
         headers: { 'content-type': 'multipart/form-data; boundary=b', 'content-length': String(body.length) },
         log: { warn: vi.fn() },
       });
-    const response = (closed = false) => Object.assign(new EventEmitter(), { closed });
+    const response = (closed = false) => {
+      const locals: { uploadDir?: string } = {};
+      return Object.assign(new EventEmitter(), { closed, locals });
+    };
     const later = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
     test("the folder is gone by the time the response's close event returns: an exit right after keeps nothing", async () => {
@@ -138,8 +146,11 @@ describe('fileParser', () => {
       fileParser(req as unknown as Request, res as unknown as Response, next);
       req.end(body);
       await vi.waitFor(() => expect(next).toHaveBeenCalledWith());
+      // The request's own folder, as fileParser recorded it; the parsed file must sit inside it.
+      const folder = String(res.locals.uploadDir);
+      expect(folder.startsWith(path.join(os.tmpdir(), 'upload-'))).toBe(true);
       const { tempFilePath } = (req as unknown as Request).files!.file as { tempFilePath: string };
-      const folder = path.dirname(tempFilePath);
+      expect(path.dirname(tempFilePath)).toBe(folder);
       expect(fs.existsSync(folder)).toBe(true);
 
       res.emit('close');
@@ -197,5 +208,33 @@ describe('fileParser', () => {
         'upload temp folder not removed',
       );
     });
+  });
+});
+
+describe("requireImage reads only from the request's own temp folder", () => {
+  const check = (tempFilePath: string, uploadDir: string | undefined) =>
+    requireImage(
+      { files: { file: { tempFilePath } } } as unknown as Request,
+      { locals: { uploadDir } } as unknown as Response,
+      vi.fn(),
+    );
+
+  test.each([
+    ['a path outside the folder', '/etc/passwd', path.join(os.tmpdir(), 'upload-1-a')],
+    [
+      'a sibling folder sharing the prefix',
+      path.join(os.tmpdir(), 'upload-1-ab', 'tmp-1'),
+      path.join(os.tmpdir(), 'upload-1-a'),
+    ],
+    [
+      'a traversal out of the folder',
+      path.join(os.tmpdir(), 'upload-1-a', '..', 'x'),
+      path.join(os.tmpdir(), 'upload-1-a'),
+    ],
+    ['no folder recorded by fileParser', path.join(os.tmpdir(), 'upload-1-a', 'tmp-1'), undefined],
+  ])('%s is refused before any read', async (_case, tempFilePath, uploadDir) => {
+    await expect(check(tempFilePath, uploadDir)).rejects.toThrow(
+      'Upload temp file is outside its request folder',
+    );
   });
 });
