@@ -10,6 +10,7 @@ No client-visible change.
 
 #### Security
 - Rebuilt the release image on Node.js **24.22.1** (`node:24-alpine`), which fixes the [October 2026 Node.js security release](https://nodejs.org/es/blog/vulnerability/october-2026-security-releases) CVEs (HIGH: Brotli out-of-bounds write, TLS hostname-verification bypasses, `dns.resolve` NUL truncation). Images 3.2.2 and earlier run an affected Node 24 build.
+- Bumped the transitive `ip-address` dependency (via `express-rate-limit` and `mongodb` → `socks`) from 10.7.2 to 10.7.4 for [GHSA-rxp7-6hxx-x8q5](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5) (moderate); lockfile only.
 
 ## [3.2.2] - 2026-10-07
 
