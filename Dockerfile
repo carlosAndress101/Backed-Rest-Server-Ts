@@ -1,7 +1,7 @@
 # M9 (ADR-051): platform-agnostic production image. Node 24 alpine (ADR-014), non-root,
 # production dependencies only, and a direct `node dist/server.js` PID 1 so SIGTERM reaches the
 # graceful shutdown (OPS-04). No build tools, dev dependencies, or source in the runtime stage.
-ARG NODE_IMAGE=node:24-alpine
+ARG NODE_IMAGE=node:24.22.3-alpine
 
 # Stage 1: production dependencies. Build tools stay in this stage: bcrypt compiles a native
 # addon and its prebuilds do not cover every musl target.
